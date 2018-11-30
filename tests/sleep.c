@@ -22,58 +22,84 @@
 
 */
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/time.h>
 
+#include "assert.h"
 #include "../libdill.h"
 
 coroutine static void delay(int n, int ch) {
     int rc = msleep(now() + n);
-    assert(rc == 0);
+    errno_assert(rc == 0);
     rc = chsend(ch, &n, sizeof(n), -1);
-    assert(rc == 0);
+    errno_assert(rc == 0);
+}
+
+static int canceled = 0;
+
+coroutine static void canceled_delay(int n) {
+    int rc = msleep(now() + n);
+    assert(rc < 0);
+    errno_assert(errno == ECANCELED);
+    canceled = 1;
 }
 
 int main() {
     /* Test 'msleep'. */
     int64_t deadline = now() + 100;
     int rc = msleep(deadline);
-    assert(rc == 0);
+    errno_assert(rc == 0);
     int64_t diff = now () - deadline;
-    assert(diff > -20 && diff < 20);
+    time_assert(diff, 0);
 
     /* msleep-sort */
-    int ch = channel(sizeof(int), 0);
-    assert(ch >= 0);
+    int ch[2];
+    rc = chmake(ch);
+    errno_assert(rc == 0);
     int hndls[4];
-    hndls[0] = go(delay(30, ch));
-    assert(hndls[0] >= 0);
-    hndls[1] = go(delay(40, ch));
-    assert(hndls[1] >= 0);
-    hndls[2] = go(delay(10, ch));
-    assert(hndls[2] >= 0);
-    hndls[3] = go(delay(20, ch));
-    assert(hndls[3] >= 0);
+    hndls[0] = go(delay(30, ch[0]));
+    errno_assert(hndls[0] >= 0);
+    hndls[1] = go(delay(40, ch[0]));
+    errno_assert(hndls[1] >= 0);
+    hndls[2] = go(delay(10, ch[0]));
+    errno_assert(hndls[2] >= 0);
+    hndls[3] = go(delay(20, ch[0]));
+    errno_assert(hndls[3] >= 0);
     int val;
-    rc = chrecv(ch, &val, sizeof(val), -1);
-    assert(rc == 0);
+    rc = chrecv(ch[1], &val, sizeof(val), -1);
+    errno_assert(rc == 0);
     assert(val == 10);
-    rc = chrecv(ch, &val, sizeof(val), -1);
-    assert(rc == 0);
+    rc = chrecv(ch[1], &val, sizeof(val), -1);
+    errno_assert(rc == 0);
     assert(val == 20);
-    rc = chrecv(ch, &val, sizeof(val), -1);
-    assert(rc == 0);
+    rc = chrecv(ch[1], &val, sizeof(val), -1);
+    errno_assert(rc == 0);
     assert(val == 30);
-    rc = chrecv(ch, &val, sizeof(val), -1);
-    assert(rc == 0);
+    rc = chrecv(ch[1], &val, sizeof(val), -1);
+    errno_assert(rc == 0);
     assert(val == 40);
-    hclose(hndls[0]);
-    hclose(hndls[1]);
-    hclose(hndls[2]);
-    hclose(hndls[3]);
-    hclose(ch);
+    rc = hclose(hndls[0]);
+    errno_assert(rc == 0);
+    rc = hclose(hndls[1]);
+    errno_assert(rc == 0);
+    rc = hclose(hndls[2]);
+    errno_assert(rc == 0);
+    rc = hclose(hndls[3]);
+    errno_assert(rc == 0);
+    rc = hclose(ch[0]);
+    errno_assert(rc == 0);
+    rc = hclose(ch[1]);
+    errno_assert(rc == 0);
+
+    /* Test cancelling msleep. */
+    int hndl = go(canceled_delay(1000));
+    errno_assert(hndl >= 0);
+    rc = msleep(now() + 100);
+    errno_assert(rc == 0);
+    rc = hclose(hndl);
+    errno_assert(rc == 0);
+    assert(canceled == 1);
 
     return 0;
 }

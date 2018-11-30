@@ -25,51 +25,43 @@
 #ifndef DILL_SLIST_INCLUDED
 #define DILL_SLIST_INCLUDED
 
-/* Singly-linked list. Having both push and push_back functions means that
-   it can be used both as a queue and as a stack. */
+#include "utils.h"
 
-struct dill_slist_item {
-    struct dill_slist_item *next;
-};
+/* A Singly-linked list that's last-in-first-out, so it's actually a stack.
+   To prevent confusion with C's call stack, we'll call it slist. */
 
 struct dill_slist {
-    struct dill_slist_item *first;
-    struct dill_slist_item *last;
+    struct dill_slist *next;
 };
 
-extern struct dill_slist_item dill_slist_item_none;
+/* Initialize the list. */
+static inline void dill_slist_init(struct dill_slist *self) {
+    self->next = self;
+}
 
-#define DILL_SLIST_ITEM_INITIALISER {&dill_slist_item_none}
+/* True if the list has no items. */
+static inline int dill_slist_empty(struct dill_slist *self) {
+    return self->next == self;
+}
 
-/* Initialise a list item. */
-void dill_slist_item_init(struct dill_slist_item *self);
-
-/* Returns 1 if the item is part of a list. 0 otherwise. */
-int dill_slist_item_inlist(struct dill_slist_item *self);
-
-/* Initialise the list. To statically initialise the list use = {0}. */
-void dill_slist_init(struct dill_slist *self);
-
-/* True is the list has no items. */
-#define dill_slist_empty(self) (!((self)->first))
-
-/* Returns iterator to the first item in the list or NULL if
-   the list is empty. */
-#define dill_slist_begin(self) ((self)->first)
-
-/* Returns iterator to one past the item pointed to by 'it'.
-   If there are no more items returns NULL. */
+/* Returns the next item in the list. If 'it' is the list itself, it returns the
+   first element in the list. If there are no more elements in the list,
+   returns a pointer to the list itself. */
 #define dill_slist_next(it) ((it)->next)
 
 /* Push the item to the beginning of the list. */
-void dill_slist_push(struct dill_slist *self, struct dill_slist_item *item);
-
-/* Push the item to the end of the list. */
-void dill_slist_push_back(struct dill_slist *self,
-    struct dill_slist_item *item);
+static inline void dill_slist_push(struct dill_slist *self,
+      struct dill_slist *item) {
+    item->next = self->next;
+    self->next = item;
+}
 
 /* Pop an item from the beginning of the list. */
-struct dill_slist_item *dill_slist_pop(struct dill_slist *self);
+static inline struct dill_slist *dill_slist_pop(struct dill_slist *self) {
+    struct dill_slist *item = self->next;
+    self->next = item->next;
+    return item;
+}
 
 #endif
 

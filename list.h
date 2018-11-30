@@ -25,46 +25,50 @@
 #ifndef DILL_LIST_INCLUDED
 #define DILL_LIST_INCLUDED
 
+#include "utils.h"
+
 /* Doubly-linked list. */
-
-struct dill_list_item {
-    struct dill_list_item *next;
-    struct dill_list_item *prev;
-};
-
 struct dill_list {
-    struct dill_list_item *first;
-    struct dill_list_item *last;
+    struct dill_list *next;
+    struct dill_list *prev;
 };
 
-/* Initialise a list item. */
-void dill_list_item_init(struct dill_list_item *self);
+/* Initialize the list. */
+static inline void dill_list_init(struct dill_list *self) {
+    self->next = self;
+    self->prev = self;
+}
 
-/* Returns 1 if the item is part of a list. 0 otherwise. */
-int dill_list_item_inlist(struct dill_list_item *self);
+/* True if the list has no items except for the head. */
+static inline int dill_list_empty(struct dill_list *self) {
+    return self->next == self;
+}
 
-/* Initialise the list. To statically initialise the list use = {0}. */
-void dill_list_init(struct dill_list *self);
+/* True if the list has only one item in addition to the head. */
+static inline int dill_list_oneitem(struct dill_list *self) {
+    return self->next != self && self->next == self->prev;
+}
 
-/* True is the list has no items. */
-#define dill_list_empty(self) (!((self)->first))
-
-/* Returns iterator to the first item in the list or NULL if
-   the list is empty. */
-#define dill_list_begin(self) ((self)->first)
-
-/* Returns iterator to one past the item pointed to by 'it'. */
+/* Returns an iterator to one past the item pointed to by 'it'. If 'it' is the
+   list itself it returns the first item of the list. At the end of
+   the list, it returns the list itself. */
 #define dill_list_next(it) ((it)->next)
 
-/* Adds the item to the list before the item pointed to by 'it'.
-   If 'it' is NULL the item is inserted to the end of the list. */
-void dill_list_insert(struct dill_list *self, struct dill_list_item *item,
-    struct dill_list_item *it);
+/* Adds the item to the list before the item pointed to by 'before'. If 'before'
+   is the list itself the item is inserted to the end of the list. */
+static inline void dill_list_insert(struct dill_list *item,
+      struct dill_list *before) {
+    item->next = before;
+    item->prev = before->prev;
+    before->prev->next = item;
+    before->prev = item;
+}
 
-/* Removes the item from the list and returns pointer to the next item in the
-   list. Item must be part of the list. */
-struct dill_list_item *dill_list_erase(struct dill_list *self,
-    struct dill_list_item *item);
+/* Removes the item from the list. */
+static void dill_list_erase(struct dill_list *item) {
+    item->prev->next = item->next;
+    item->next->prev = item->prev;
+}
 
 #endif
 

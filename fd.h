@@ -25,7 +25,65 @@
 #ifndef DILL_FD_INCLUDED
 #define DILL_FD_INCLUDED
 
-/* Returns maximum possible number of file descriptors. */
-int dill_maxfds(void);
+#include <stdint.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+#define DILL_DISABLE_RAW_NAMES
+#include "libdill.h"
+#include "slist.h"
+
+struct dill_ctx_fd {
+    int count;
+    struct dill_slist cache;
+};
+
+int dill_ctx_fd_init(struct dill_ctx_fd *ctx);
+void dill_ctx_fd_term(struct dill_ctx_fd *ctx);
+
+struct dill_fd_rxbuf {
+    size_t len;
+    size_t pos;
+    uint8_t *buf;
+};
+
+void dill_fd_initrxbuf(
+    struct dill_fd_rxbuf *rxbuf);
+void dill_fd_termrxbuf(
+    struct dill_fd_rxbuf *rxbuf);
+int dill_fd_unblock(
+    int s);
+int dill_fd_connect(
+    int s,
+    const struct sockaddr *addr,
+    socklen_t addrlen,
+    int64_t deadline);
+int dill_fd_accept(
+    int s,
+    struct sockaddr *addr,
+    socklen_t *addrlen,
+    int64_t deadline);
+int dill_fd_send(
+    int s,
+    struct dill_iolist *first,
+    struct dill_iolist *last,
+    int64_t deadline);
+int dill_fd_recv(
+    int s,
+    struct dill_fd_rxbuf *rxbuf,
+    struct dill_iolist *first,
+    struct dill_iolist *last,
+    int64_t deadline);
+void dill_fd_close(
+    int s);
+int dill_fd_own(
+    int s);
+int dill_fd_check(
+    int s,
+    int type,
+    int family1,
+    int family2,
+    int listening);
 
 #endif
+
